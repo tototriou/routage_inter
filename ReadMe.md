@@ -35,9 +35,34 @@ En résumé, les routes statiques sont utilisées pour configurer le routage ent
 
 
 
-CE1 hosts	Ip route add default via [IP] dev port
-CE2 router	conf t <br> ip route 172.16.0.0/12 10.0.13.2
-PE2 router	ip route 172.16.10.0/24 10.0.13.1 vrf VRF_X <br> conf t <br> router bgp 10 vrf VRF_X <br> address-family ipv4 <br> redistribute static <br> label vpn export auto <br> rd vpn export 10:100 <br> rt vpn both 10:100 <br> export vpn <br> import vpn
+|                    | Commandes                             |
+|--------------------|---------------------------------------|
+| CE1 hosts          | `Ip route add default via [IP] dev port` |
+| CE2 router         | ```
+                      conf t
+                      ip route 172.16.0.0/12 10.0.13.2
+                      ```                                |
+| PE2 router         | ```
+                      ip route 172.16.10.0/24 10.0.13.1 vrf VRF_X
+                      conf t
+                      router bgp 10 vrf VRF_X
+                      address-family ipv4
+                      redistribute static
+                      label vpn export auto
+                      rd vpn export 10:100
+                      rt vpn both 10:100
+                      export vpn
+                      import vpn
+                      ```                                |
+
+
+CE1 host | CE1 router | PE1 router |
+ --- | --- | --- 
+Cellule 1.1 | Cellule 1.2 | conf t
+router bgp 10
+address-family ipv4 vpn
+neighbor 10.155.0.1 activate
+neighbor 10.158.0.1 activate
 
 
 
