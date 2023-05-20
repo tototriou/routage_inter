@@ -11,8 +11,44 @@ finale, vous pourrez essayer de connecter vos hubs et leurs clients à l’Inter
 
 ## Question 1
 
-Commencez par vous occuper du VPN X en full-mesh : déployez des VRF avec un RD arbitraire dans les PE concernés et activez
-MPLS dans l’ensemble du réseau. Définissez une RT commune entre les PE.
+Avant toute configuration directe des VPN, notre premiere action était de metre en place les differentes adreese ip et de loopback manquantes sur les différentes instances. Celle-ci pourront être directement consulté sur nos config.
+
+### Mise en place d'un VPN en full-mesh:
+Dans cette premiere partie, nous cherchons à mettre en place le VPN X en full-mesh tout en faisant varié le type de de protocol de routage au sein des sous-réseaux composant le VPN : static, ospf et rip. L'interêt est double: montrer nos comprehension des differents protocole mais aussi assurer une certaine sécurité à notre mini internet en evitant la dépendance à un seul protocol de communication
+
+Avant de commencer la configuration des routes static en soit, certaines étapes préliminaire doivent être faite. 
+
+On commence dans un premier temps par activé le protocol BGP sur notre routeur PE1 tout en spécifiant notre numéro d'AS. Ensuite, la commande “address-family ipv4 vpn” est utilisée pour activer la famille d’adresses IPv4 VPN. Les commandes “neighbor X.X.X.X activate” sont utilisées pour activer les voisins BGP avec les adresses lo des routeurs d'entrée (PE3 et PE6) liées aux autre sous réseaux du VPN X.
+
+Dans un 2ème temps, sachant que les nœuds dans différents VPN ne peuvent pas communiquer entre eux, donc les informations de routage de différents VPN doivent être stockées dans des structures différentes. Cela est possible grâce à VRF (Virtual Routing and Forwarding), qui nous permet de stocker les informations de routage dans différentes tables (une par VPN). Pour utiliser VRF, les interfaces du routeur (dans votre AS) connectées à un bord client doivent être assignées à une VRF particulière. FRRouting s’appuie sur Linux VRF et les interfaces VRF doivent être créées dans Linux avant que nous puissions les configurer dans FRRouting. Pour les créer, nous allons sur le conteneur des routeurs et utilisons la commande ip. Notez que vous pouvez utiliser la commande ip link pour afficher vos paramètres VRF. Une fois dans le conteneur, nous créons la table VRF, la mettons en marche et la lier à l’interface.
+
+#### Mise en place d'un routage par route static
+Les éléments concernant par cette de communication se trouve dans le sous réseaux du routeur CE1 dans le VPN X.
+
+Les routes statiques sont utilisées pour configurer le routage au sein du VPN. Pour le CE (Customer Edge), une route par défaut est configurée vers son PE (Provider Edge) pour toutes les destinations non locales. Par exemple, sur le CE de l'entreprise Y, une route par défaut est ajoutée dirigée vers son PE.
+
+Pour le PE, une route statique est configurée pour rejoindre son côté du VPN. Cette route statique est partagée avec les autres PEs du VPN via MP-BGP (Multiprotocol Border Gateway Protocol). Cela permet à chaque PE de connaître les routes statiques des autres PEs du VPN.
+
+MP-BGP est utilisé pour transporter les informations liées au VPN, notamment les routes vers les CEs. Les PEs redistribuent les routes statiques dans MP-BGP afin que les autres PEs puissent les connaître. Des étiquettes MPLS sont également ajoutées aux routes pour faciliter le transfert des paquets dans le réseau MPLS.
+
+En résumé, les routes statiques sont utilisées pour configurer le routage entre les CEs et les PEs du VPN, tandis que MP-BGP est utilisé pour partager ces informations de routage entre les PEs du VPN. Cela permet d'établir une connectivité efficace et sécurisée entre les sites du VPN.
+
+
+
+CE1 hosts	Ip route add default via [IP] dev port
+CE2 router	conf t <br> ip route 172.16.0.0/12 10.0.13.2
+PE2 router	ip route 172.16.10.0/24 10.0.13.1 vrf VRF_X <br> conf t <br> router bgp 10 vrf VRF_X <br> address-family ipv4 <br> redistribute static <br> label vpn export auto <br> rd vpn export 10:100 <br> rt vpn both 10:100 <br> export vpn <br> import vpn
+
+
+
+
+
+#### Mise en place d'une communication par OSPF
+
+#### Mise en place d'une commun
+
+
+
 1. Que constatez vous? Expliquez le rôle de BGP et de MPLS dans le fonctionnement global;
 2. Testez et expérimentez le plan de contrôle comme le plan de données (prenez soin de prendre garde à ECMP si besoin);
 3. Montrez les effets de l’ajout d‘un nouveau préfixe IP privé dans ce VPN depuis le CE de votre choix (pour cela ajoutez lui
