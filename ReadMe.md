@@ -175,6 +175,8 @@ A partir de maintenant on peut ping les host de CE1 et CE3 entre eux.
 Nous utilisons le protocole RIP pour établir une communication entre le routeur PE6 et le routeur CE6A. Cette configuration permet aux deux équipements de partager leurs routes et d'échanger des informations de routage. Le routeur PE6 redistribue ensuite les routes RIP apprises dans le protocole de routage BGP (Border Gateway Protocol) utilisé dans le réseau VPN. Cela permet aux autres routeurs PE du réseau de connaître les routes RIP associées à ce VRF. En utilisant les commandes d'exportation et d'importation VPN, les routes sont partagées entre le VRF et la table de routage globale, assurant ainsi une connectivité et une communication efficaces entre le routeur PE6 et le routeur CE6A dans le réseau VPN.
 Idem pour le routeur CE6B.
 
+Note : Il ne faut pas oublier de mettre en places les container et les routes par defaut sur les hôtes.
+
 ```
 PE6_router# conf t
 PE6_router(config)# router rip vrf VRF_X
@@ -198,11 +200,31 @@ PE6_router(config-router-af)# rt vpn both 10:100
 PE6_router(config-router-af)# export vpn
 PE6_router(config-router-af)# import vpn
 ```
+Ici nous rencontrons un problème pour ping le host de CE1 ce qui est bizarre car nous pouvons ping le host de CE3. PE6 connait la route pour aller à CE1 mais n'arrive pas a ping :
 
-Note : Il ne faut pas oublier de mettre en places les container et les routes par defaut sur les hôtes.
+![image](route_bgp_PE6.png)
+
+Nous ne savons pas quoi faire pour résoudre ce problème étant donné que la route est connue par PE6 et qu'il y a bien une redistribution de RIP vers BGP et de BGP vers RIP.
+
+
+
 
 ### Mise en place du hub and spoke
 
+Nous avions travaillé tous les deux de notre coté avec Sofian donc nous avions mis en place le full-mesh sur les 2 vpn (X et Y) donc le travil était en grande parti  fait pour mettre en place le hub and spoke pour le vnp Y. Nous avons donc juste eu à faire les modifications suivantes :  
+    - Changer les voisins de PE2,PE4 et PE6 en se limitant a PE5 uniquement pour le vpn Y.
+    - Modifier les RT du vpn Y sur PE2,PE6 et PE4 pour qu'ils ne soient plus en full-mesh mais en hub and spoke. C'est à dire mettre des tags différents à l'export et à l'import. Dans notre cas 10:210 en export et 10:200 en import. Sur PE5, il fallait mettre l'inverse pour que cela marche bien.
+    - Sur PE5, il fallait ajouter tous les membres du vpn Y en voisin BGP et mettre les bonnes politiques d'import et d'export.
+
+Nous avons mis en place toutes ces config mais nous avons un problème de route : sur PE5 toutes les routes sont apparentes :
+
+![image](PE5_routes.png)
+
+Mais sur PE2,PE4 et PE6, la route vers PE5 n'apparait pas :
+
+![image](PE2_route.png)
+
+Nous n'avons pas réussi à comprendre pourquoi 
 #
 ## Réponse aux questions :
 ### Question 1
