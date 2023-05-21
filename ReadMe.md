@@ -14,11 +14,11 @@ finale, vous pourrez essayer de connecter vos hubs et leurs clients à l’Inter
 Avant toute configuration directe des VPN, notre premiere action était de metre en place les differentes adresse ip et de loopback manquantes sur les différentes instances. Celle-ci pourront être directement consulté sur nos config.
 #
 ### Mise en place d'un VPN en full-mesh:
-Dans cette premiere partie, nous cherchons à mettre en place le VPN X en full-mesh tout en faisant varié le type de de protocol de routage au sein des sous-réseaux composant le VPN : static, ospf et rip. L'interêt est double: montrer nos comprehension des differents protocole mais aussi assurer une certaine sécurité à notre mini internet en evitant la dépendance à un seul protocol de communication
+Dans cette première partie, nous cherchons à mettre en place le VPN X en full-mesh tout en faisant varier le type de protocole de routage au sein des sous-réseaux composant le VPN : static, OSPF et RIP. L'intérêt est double : montrer nos compréhensions des différents protocoles, mais aussi assurer une certaine sécurité à notre mini internet en évitant la dépendance à un seul protocole de communication.
 
-Avant de commencer la configuration des routes static en soit, certaines étapes préliminaire doivent être faite. 
+Avant de commencer la configuration des routes statiques en soi, certaines étapes préliminaires doivent être faites.
 
-On commence dans un premier temps par activé le protocol BGP sur notre routeur PE1 tout en spécifiant notre numéro d'AS. Ensuite, la commande “address-family ipv4 vpn” est utilisée pour activer la famille d’adresses IPv4 VPN. Les commandes “neighbor X.X.X.X activate” sont utilisées pour activer les voisins BGP avec les adresses lo des routeurs d'entrée (PE3 et PE6) liées aux autre sous réseaux du VPN X. On réalise la même chose sur les routeurs PE3 et PE6 en activant les voisins BGP avec les adresses lo des routeurs liées aux autre sous réseaux du VPN X. 
+On commence dans un premier temps par activer le protocole BGP sur notre routeur PE1 tout en spécifiant notre numéro d'AS. Ensuite, la commande "address-family ipv4 vpn" est utilisée pour activer la famille d'adresses IPv4 VPN. Les commandes "neighbor X.X.X.X activate" sont utilisées pour activer les voisins BGP avec les adresses loopback des routeurs d'entrée (PE3 et PE6) liées aux autres sous-réseaux du VPN X. On réalise la même chose sur les routeurs PE3 et PE6 en activant les voisins BGP avec les adresses loopback des routeurs liées aux autres sous-réseaux du VPN X.
 
 ```
 conf t
@@ -28,7 +28,9 @@ neighbor 10.155.0.1 activate
 neighbor 10.158.0.1 activate
 ```
 
-Dans un 2ème temps, sachant que les nœuds dans différents VPN ne peuvent pas communiquer entre eux, donc les informations de routage de différents VPN doivent être stockées dans des structures différentes. Cela est possible grâce à VRF (Virtual Routing and Forwarding), qui nous permet de stocker les informations de routage dans différentes tables (une par VPN). Pour utiliser VRF, les interfaces du routeur (dans votre AS) connectées à un bord client doivent être assignées à une VRF particulière. FRRouting s’appuie sur Linux VRF et les interfaces VRF doivent être créées dans Linux avant que nous puissions les configurer dans FRRouting. Pour les créer, nous allons sur le conteneur des routeurs et utilisons la commande ip. Notez que vous pouvez utiliser la commande ip link pour afficher vos paramètres VRF. Une fois dans le conteneur, nous créons la table VRF, la mettons en marche et la lier à l’interface. Nous rentrons les commandes suivantes sur les différents containers des routeurs PE du vpn X (resp vpn Y):
+Dans un deuxième temps, sachant que les nœuds dans différents VPN ne peuvent pas communiquer entre eux, les informations de routage des différents VPN doivent être stockées dans des structures distinctes. Cela est possible grâce à VRF (Virtual Routing and Forwarding), qui nous permet de stocker les informations de routage dans différentes tables (une par VPN). Pour utiliser VRF, les interfaces du routeur connectées à un bord client dans votre AS doivent être assignées à une VRF spécifique. FRRouting s'appuie sur Linux VRF, et les interfaces VRF doivent être créées dans Linux avant que nous puissions les configurer dans FRRouting.
+
+Pour créer les interfaces VRF et les configurer dans les différents conteneurs des routeurs PE du VPN X (et du VPN Y le cas échéant), les étapes sont les suivantes
 ```
 link add VRF_X type vrf table 10
 link set VRF_X up
@@ -110,7 +112,6 @@ On voit bien que la route vers le vpn X est bien présente. On pourra donc faire
 ### Mise en place d'une communication par OSPF
 
 Nous utilisons le protocole OSPF pour établir une communication entre le routeur CE3 et le routeur PE3. Cette configuration permet aux deux équipements de partager leurs routes et d'échanger des informations de routage. Le routeur PE3 redistribue ensuite les routes OSPF apprises dans le protocole de routage BGP (Border Gateway Protocol) utilisé dans le réseau VPN. Cela permet aux autres routeurs PE du réseau de connaître les routes OSPF associées à ce VRF. En utilisant les commandes d'exportation et d'importation VPN, les routes sont partagées entre le VRF et la table de routage globale, assurant ainsi une connectivité et une communication efficaces entre les différents équipements du réseau VPN.
-
 
 
 ```
@@ -198,39 +199,60 @@ PE6_router(config-router-af)# export vpn
 PE6_router(config-router-af)# import vpn
 ```
 
+Note : Il ne faut pas oublier de mettre en places les container et les routes par defaut sur les hôtes.
 
+### Mise en place du hub and spoke
 
 #
 ## Réponse aux questions :
 ### Question 1
 
-1. Que constatez vous? Expliquez le rôle de BGP et de MPLS dans le fonctionnement global:
-BGP (Border Gateway Protocol) est utilisé pour l'échange des informations de routage entre les routeurs des différents sites VPN, tandis que MPLS (Multiprotocol Label Switching) est utilisé pour acheminer les paquets à travers le réseau en utilisant des chemins prédéfinis basés sur des étiquettes. BGP permet de déterminer les meilleures routes pour atteindre les destinations spécifiques, tandis que MPLS offre une commutation rapide des paquets et une connectivité sécurisée entre les VPN. En résumé, BGP facilite le routage des données, tandis que MPLS assure un acheminement efficace des paquets.
+1. BGP est utilisé pour l'échange des informations de routage entre les routeurs des différents sites VPN, tandis que MPLS (Multiprotocol Label Switching) est utilisé pour acheminer les paquets à travers le réseau en utilisant des chemins prédéfinis basés sur des étiquettes. BGP permet de déterminer les meilleures routes pour atteindre les destinations spécifiques, tandis que MPLS offre une commutation rapide des paquets et une connectivité sécurisée entre les VPN. En résumé, BGP facilite le routage des données, tandis que MPLS assure un acheminement efficace des paquets.
 
-2. Testez et expérimentez le plan de contrôle comme le plan de données (prenez soin de prendre garde à ECMP si besoin);
+2. Nos resultats de tests pour le plans plan de contrôle et de données sont :
+
 Pour le plan de controle:
-    - capture d'ecran de show bgp summary et voir que les routes sont correctement établie
-    - sho bgp vpn  unicast et voir que les routes vpn sont correctement declaré
-    - voir les tables de routages bgp et les filtres
+    - "show ip bgp ipv4 vpn" : Cette commande affiche la table BGP pour les routes VPN spécifiques à l'adresse IPv4. Elle permet de vérifier si les routes VPN sont correctement annoncées et apprises. On peut y vérifier les informations telles que les adresses réseau, les prochains sauts (next hop), les métriques, etc
+    ![Texte alternatif](PE3_sh_bgp_ipv4_vpn.png "table bgp PE3")
+
+    - "show ip bgp vrf VRF_Y" : Cette commande affiche la table BGP pour une VRF spécifique (dans cet exemple, VRF_Y). Elle permet de vérifier les routes BGP spécifiques à cette VRF, y compris les informations sur les adresses réseau, les prochains sauts, les métriques, etc. On observe une sorti coherente avec ce que l'on souhaite au niveau des networks.
+     ![Texte alternatif](PE3_sh_ip_bgp_vrf_VRF_X.png "table VRF")
+
+    - "show ip route vrf VRF_Y" : Cette commande affiche la table de routage pour une VRF spécifique (VRF_X dans ce cas).  
+    ![Texte alternatif](PE3_sh_ip_route vrf VRF_X.png "table route vrf")
+    
+    
+   Aprés analyse de chaque retour de commandes, les networks, liens, neighbors et vrf sont tous bien configuré avec les bonnes adresses de loopback, IP et les bonnes metriques. on y retouve bien chaque instances du VPN X sur PE1 et PE6 dans les table de PE3
 
 Pour le plan de données:
-    - test de ping
-    - test de cheminement via traceroute (pareille screen)  
-3. Montrez les effets de l’ajout d‘un nouveau préfixe IP privé dans ce VPN depuis le CE de votre choix (pour cela ajoutez lui
-une loopback).
-il faudra probablement ajusté les filtres
+    - Pour vérifier cette partie, nous pouvons effectuer des pings et des traceroutes et analyser les sorties. Les deux commandes fonctionnes et la route observer sur la capture ci-dessous est coherente pour la fin. En revanche, nous obtenons souvent une latence au milieu du cheminement.  
+    ![Texte alternatif](ping1.png "traceroute").
+
+3. Cette partie n'a pas eu le temps dêtre traité. En effet, nous avions préféré nous lancer sur le hub and spoke. Partie que nous trouvions trés intéressante. Mais dans les grandes lignes :
+En ajoutant un nouveau préfixe IP privé dans le VPN X à partir d'un CE spécifique, en lui attribuant une loopback, nous devrions observer que ce préfixe est propagé aux autres sites du VPN via BGP. Cela permettra une connectivité transparente entre les sites et facilitera l'acheminement des paquets vers la nouvelle adresse IP privée.
 
 #
 ## Question 2
 
-Faites en de même pour le VPN Y mais en hub & spoke, avec PE5 en hub. Contrairement à la Q1, votre RT sera adaptée à chaque
-rôle et le hub devra relayer la signalisation iBGP.
-1. Trouvez plusieurs moyens pour configurer cette solution (au moins deux). Que constatez vous dans chaque cas?
+1. Nous avons identifié deux approches possibles pour configurer cette solution. La première méthode consiste à utiliser des tags MPLS pour diriger le trafic entre le hub et les sites spoke. Chaque site spoke envoie son trafic vers le hub en utilisant un tag MPLS spécifique, permettant ainsi au hub de router les paquets vers les sites spoke appropriés. En outre, le hub doit relayer la signalisation iBGP pour maintenir une connectivité juste.
+
+La deuxième approche consiste à utiliser un route reflector pour faciliter la communication entre les différents nœuds du VPN Y. Dans cette configuration, le hub est configuré en tant que route reflector, tandis que les sites spoke sont configurés en tant que clients du route reflector. Cette configuration permet au route reflector de refléter les routes reçues de chaque site spoke vers tous les autres sites, assurant ainsi une connectivité complète au sein du VPN Y. En plus de cela, le route reflector assume également la responsabilité de relayer la signalisation iBGP pour maintenir la cohérence et la synchronisation du réseau.
+
+En examinant ces deux approches, nous constatons que la configuration en hub & spoke avec des tags MPLS permet une gestion plus granulaire du routage et une manipulation précise du trafic entre les sites. D'un autre côté, l'utilisation d'un route reflector facilite la gestion et l'administration du réseau, en permettant une propagation automatique des routes vers tous les nœuds du VPN Y.
+
+
+
 2. Testez et expérimentez le plan de contrôle comme le plan de données.
 3. Appliquez des filtres/politiques sur le hub.
 
 #
-## Question 3
+## Question 3 (pas traité mais expliqué dans les grandes lignes)
 
-Faculctatif : Connectez votre hub à l’IXP 81 pour offrir une connexion Internet au VPN Y. Démontrez la connectivité de ses sites
-malgré l’utilisation d’un espace d’adressage privée.
+Pour connecter notre hub VPN Y à l’IXP 81 pour offrir une connexion Internet au VPN Y, le cheminement est le suivant:
+
+    - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage iBGP.
+    - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage BGP.
+    - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage OSPF.
+    - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage EIGRP.
+
+Ces étapes permettent d’annoncer l’adresse IP publique du routeur PE5 à l’IXP 81. Il faudra ensuite travailler sur le NAT pour la traduction d'adresse.
