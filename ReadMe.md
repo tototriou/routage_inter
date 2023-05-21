@@ -97,8 +97,17 @@ PE3_router(config-router-af)# import vpn
 BGP (Border Gateway Protocol) est utilisé pour l'échange des informations de routage entre les routeurs des différents sites VPN, tandis que MPLS (Multiprotocol Label Switching) est utilisé pour acheminer les paquets à travers le réseau en utilisant des chemins prédéfinis basés sur des étiquettes. BGP permet de déterminer les meilleures routes pour atteindre les destinations spécifiques, tandis que MPLS offre une commutation rapide des paquets et une connectivité sécurisée entre les VPN. En résumé, BGP facilite le routage des données, tandis que MPLS assure un acheminement efficace des paquets.
 
 2. Testez et expérimentez le plan de contrôle comme le plan de données (prenez soin de prendre garde à ECMP si besoin);
+Pour le plan de controle:
+    - capture d'ecran de show bgp summary et voir que les routes sont correctement établie
+    - sho bgp vpn  unicast et voir que les routes vpn sont correctement declaré
+    - voir les tables de routages bgp et les filtres
+
+Pour le plan de données:
+    - test de ping
+    - test de cheminement via traceroute (pareille screen)
 3. Montrez les effets de l’ajout d‘un nouveau préfixe IP privé dans ce VPN depuis le CE de votre choix (pour cela ajoutez lui
 une loopback).
+il faudra probablement ajusté les filtres
 
 ## Question 2
 
