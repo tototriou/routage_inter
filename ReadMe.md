@@ -1,5 +1,7 @@
 # Projet routage inter-domaine
 
+Une version pdf de ce rapport est disponible dans le dossier rapport.
+
 ## sujet 
 
 L’objectif principal de ce TP / mini-projet est d’inter-connecter les différents sous-sites, au moyen de VPN-BGP MPLS, avec un
@@ -295,6 +297,5 @@ Pour connecter notre hub VPN Y à l’IXP 81 pour offrir une connexion Internet 
 
 Ces étapes permettent d’annoncer l’adresse IP publique du routeur PE5 à l’IXP 81. Ensuite, nous devons configurer le routeur PE5 pour qu'il annonce les préfixes du VPN Y à l'IXP 81. 
 
-# Annexes
 
-Une version pdf de ce rapport est disponible dans le dossier rapport.
+
