@@ -208,8 +208,8 @@ Nous ne savons pas quoi faire pour résoudre ce problème étant donné que la r
 
 
 
-
-### Mise en place du hub and spoke
+#
+### Mise en place du hub and spoke avec tag
 
 Nous avions travaillé tous les deux de notre coté avec Sofian donc nous avions mis en place le full-mesh sur les 2 vpn (X et Y) donc le travil était en grande parti  fait pour mettre en place le hub and spoke pour le vnp Y. Nous avons donc juste eu à faire les modifications suivantes :  
     - Changer les voisins de PE2,PE4 et PE6 en se limitant a PE5 uniquement pour le vpn Y.
@@ -224,7 +224,18 @@ Mais sur PE2,PE4 et PE6, la route vers PE5 n'apparait pas :
 
 ![image](PE2_route.png)
 
-Nous n'avons pas réussi à comprendre pourquoi 
+Nous n'avons pas réussi à comprendre pourquoi la route de PE5 n'apparait pas. Nous avons pensé à une solution qui serait de mettre en place un tunnel MPLS entre PE5 et PE2,PE4 et PE6 mais nous n'avons pas eu le temps de le faire.   
+
+
+#
+### Mise en place du hub and spoke avec RR (route reflector)
+
+Nous n'avons pas eu le temps de mettre en place le hub and spoke avec RR. Mais voici les principes qu'il aurait fallu mettre en place :
+    - Sur PE5, il est configuré pour fonctionner en tant que réflecteur de route, ce qui signifie qu'il reçoit les mises à jour de routage des routeurs clients et les reflète aux autres routeurs clients. Le route reflector ne redistribue pas les routes qu'il reçoit, mais les réfléchit aux autres routeurs clients connectés. Cela réduit le nombre total de sessions de peering BGP nécessaires entre les routeurs clients.
+    - Sur PE2, PE4 et PE6, chaque routeur client établit une session de peering BGP avec le route reflector. Les routeurs clients envoient leurs mises à jour de routage (routes) au route reflector, qui les reflète ensuite aux autres routeurs clients. Les routeurs clients ne sont pas directement connectés les uns aux autres, mais ils communiquent via le route reflector.
+
+En utilisant cette architecture hub and spoke avec un route reflector, il est possible de réduire le nombre de sessions de peering BGP nécessaires, ce qui simplifie la configuration et améliore l'efficacité du routage dans un réseau de grande taille. Nous aurions pu ainsi mettre à jour les session iBGP entre PE2,PE4 et PE6 pour qu'ils se connectent à PE5 et non plus entre eux.
+
 #
 ## Réponse aux questions :
 ### Question 1
@@ -234,23 +245,26 @@ Nous n'avons pas réussi à comprendre pourquoi
 2. Nos resultats de tests pour le plans plan de contrôle et de données sont :
 
 Pour le plan de controle:
-    - "show ip bgp ipv4 vpn" : Cette commande affiche la table BGP pour les routes VPN spécifiques à l'adresse IPv4. Elle permet de vérifier si les routes VPN sont correctement annoncées et apprises. On peut y vérifier les informations telles que les adresses réseau, les prochains sauts (next hop), les métriques, etc
-    ![Texte alternatif](PE3_sh_bgp_ipv4_vpn.png "table bgp PE3")
 
-    - "show ip bgp vrf VRF_Y" : Cette commande affiche la table BGP pour une VRF spécifique (dans cet exemple, VRF_Y). Elle permet de vérifier les routes BGP spécifiques à cette VRF, y compris les informations sur les adresses réseau, les prochains sauts, les métriques, etc. On observe une sorti coherente avec ce que l'on souhaite au niveau des networks.
-     ![Texte alternatif](PE3_sh_ip_bgp_vrf_VRF_X.png "table VRF")
+- "show ip bgp ipv4 vpn" : Cette commande affiche la table BGP pour les routes VPN spécifiques à l'adresse IPv4. Elle permet de vérifier si les routes VPN sont correctement annoncées et apprises. On peut y vérifier les informations telles que les adresses réseau, les prochains sauts (next hop), les métriques, etc  
 
-    - "show ip route vrf VRF_Y" : Cette commande affiche la table de routage pour une VRF spécifique (VRF_X dans ce cas).  
-    ![Texte alternatif](PE3_sh_ip_route vrf VRF_X.png "table route vrf")
-    
-    
+![Texte alternatif](PE3_sh_bgp_ipv4_vpn.png "table bgp PE3")
+
+- "show ip bgp vrf VRF_Y" : Cette commande affiche la table BGP pour une VRF spécifique (dans cet exemple, VRF_Y). Elle permet de vérifier les routes BGP spécifiques à cette VRF, y compris les informations sur les adresses réseau, les prochains sauts, les métriques, etc. On observe une sorti coherente avec ce que l'on souhaite au niveau des networks.
+
+![Texte alternatif](PE3_sh_ip_bgp_vrf_VRF_X.png "table VRF")
+
+- "show ip route vrf VRF_Y" : Cette commande affiche la table de routage pour une VRF spécifique (VRF_X dans ce cas).
+
+![Texte alternatif](PE3_sh_ip_route_vrf_VRF_X.png)
+
    Aprés analyse de chaque retour de commandes, les networks, liens, neighbors et vrf sont tous bien configuré avec les bonnes adresses de loopback, IP et les bonnes metriques. on y retouve bien chaque instances du VPN X sur PE1 et PE6 dans les table de PE3
 
 Pour le plan de données:
     - Pour vérifier cette partie, nous pouvons effectuer des pings et des traceroutes et analyser les sorties. Les deux commandes fonctionnes et la route observer sur la capture ci-dessous est coherente pour la fin. En revanche, nous obtenons souvent une latence au milieu du cheminement.  
-    ![Texte alternatif](ping1.png "traceroute").
+![Texte alternatif](ping1.png)
 
-3. Cette partie n'a pas eu le temps dêtre traité. En effet, nous avions préféré nous lancer sur le hub and spoke. Partie que nous trouvions trés intéressante. Mais dans les grandes lignes :
+3. Cette partie n'a pas eu le temps dêtre traité. En effet, nous avions préféré nous lancer sur le hub and spoke. Mais dans les grandes lignes :
 En ajoutant un nouveau préfixe IP privé dans le VPN X à partir d'un CE spécifique, en lui attribuant une loopback, nous devrions observer que ce préfixe est propagé aux autres sites du VPN via BGP. Cela permettra une connectivité transparente entre les sites et facilitera l'acheminement des paquets vers la nouvelle adresse IP privée.
 
 #
@@ -260,13 +274,16 @@ En ajoutant un nouveau préfixe IP privé dans le VPN X à partir d'un CE spéci
 
 La deuxième approche consiste à utiliser un route reflector pour faciliter la communication entre les différents nœuds du VPN Y. Dans cette configuration, le hub est configuré en tant que route reflector, tandis que les sites spoke sont configurés en tant que clients du route reflector. Cette configuration permet au route reflector de refléter les routes reçues de chaque site spoke vers tous les autres sites, assurant ainsi une connectivité complète au sein du VPN Y. En plus de cela, le route reflector assume également la responsabilité de relayer la signalisation iBGP pour maintenir la cohérence et la synchronisation du réseau.
 
-En examinant ces deux approches, nous constatons que la configuration en hub & spoke avec des tags MPLS permet une gestion plus granulaire du routage et une manipulation précise du trafic entre les sites. D'un autre côté, l'utilisation d'un route reflector facilite la gestion et l'administration du réseau, en permettant une propagation automatique des routes vers tous les nœuds du VPN Y.
+En examinant ces deux approches, nous constatons que la configuration en hub & spoke avec des tags permet une gestion plus granulaire du routage et une manipulation précise du trafic entre les sites. D'un autre côté, l'utilisation d'un route reflector facilite la gestion et l'administration du réseau, en permettant une propagation automatique des routes vers tous les nœuds du VPN Y.
 
 
 
 2. Testez et expérimentez le plan de contrôle comme le plan de données.
-3. Appliquez des filtres/politiques sur le hub.
 
+    Cf la partie sur hub and spoke des configurations.
+
+3. Appliquez des filtres/politiques sur le hub.
+    Cela n'a pas été réalisé.
 #
 ## Question 3 (pas traité mais expliqué dans les grandes lignes)
 
@@ -275,6 +292,9 @@ Pour connecter notre hub VPN Y à l’IXP 81 pour offrir une connexion Internet 
     - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage iBGP.
     - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage BGP.
     - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage OSPF.
-    - Configurez une interface de bouclage sur le routeur de bordure (PE5) et annoncez-la dans le protocole de routage EIGRP.
 
-Ces étapes permettent d’annoncer l’adresse IP publique du routeur PE5 à l’IXP 81. Il faudra ensuite travailler sur le NAT pour la traduction d'adresse.
+Ces étapes permettent d’annoncer l’adresse IP publique du routeur PE5 à l’IXP 81. Ensuite, nous devons configurer le routeur PE5 pour qu'il annonce les préfixes du VPN Y à l'IXP 81. 
+
+# Annexes
+
+Une version pdf de ce rapport est disponible dans le dossier rapport.
